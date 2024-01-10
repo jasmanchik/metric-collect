@@ -74,6 +74,7 @@ func (a *App) Handle(pattern string, handler Handler) {
 
 			var httpError *handlers.ErrorHTTP
 			if err != nil && errors.As(err, &httpError) {
+				slog.Info("error code", "code", httpError.Code)
 				err = web.Response(w, nil, httpError.Code)
 				if err != nil {
 					l.Warn("response error:", slog.String("error", err.Error())) //nolint:govet

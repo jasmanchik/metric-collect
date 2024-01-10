@@ -17,35 +17,45 @@ type RequestMetricResult struct {
 }
 
 type RequestsMetric struct {
-	totalRequests     int
-	totalErrors       int
-	totalServerErrors int
-	log               *slog.Logger
-	promTotalRequests prometheus.Counter
-	promTotalErrors   prometheus.Counter
-	promServerErrors  prometheus.Counter
+	TotalRequests       int
+	TotalErrors         int
+	TotalServerErrors   int
+	log                 *slog.Logger
+	PromREDMetric       *prometheus.CounterVec
+	PromTotalRequests   *prometheus.CounterVec
+	PromTotalErrors     *prometheus.CounterVec
+	PromRequestDuration *prometheus.HistogramVec
 }
 
 func NewRequestCounter(log *slog.Logger) *RequestsMetric {
-
-	promTotalRequests := promauto.NewCounter(prometheus.CounterOpts{
-		Name: "total_requests_count",
-		Help: "The total number of requests",
-	})
-	promTotalErrors := promauto.NewCounter(prometheus.CounterOpts{
-		Name: "total_request_errors_count",
+	promTotalErrors := promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "http_errors_total",
 		Help: "The total number of error requests",
-	})
-	promServerErrors := promauto.NewCounter(prometheus.CounterOpts{
-		Name: "total_server_errors_count",
-		Help: "The total number of fatal error requests",
-	})
+	}, []string{"method", "endpoint", "status"})
+
+	promTotalRequests := promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "http_requests_total",
+		Help: "The total number of requests",
+	}, []string{"method", "endpoint"})
+
+	requestDuration := prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "http_request_duration_seconds",
+			Help:    "Duration of requests",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method", "endpoint"},
+	)
+	err := prometheus.Register(requestDuration)
+	if err != nil {
+		log.Error("failed to register request duration metric", slog.String("error", err.Error()))
+	}
 
 	return &RequestsMetric{
-		log:               log,
-		promTotalRequests: promTotalRequests,
-		promTotalErrors:   promTotalErrors,
-		promServerErrors:  promServerErrors,
+		log:                 log,
+		PromTotalRequests:   promTotalRequests,
+		PromTotalErrors:     promTotalErrors,
+		PromRequestDuration: requestDuration,
 	}
 }
 
@@ -75,25 +85,10 @@ func (r *RequestsMetric) Ping() error {
 func (r *RequestsMetric) GetMetricList() (*RequestMetricResult, error) {
 
 	metricCounters := &RequestMetricResult{
-		TotalRequests:     r.totalRequests,
-		TotalErrors:       r.totalErrors,
-		TotalServerErrors: r.totalServerErrors,
+		TotalRequests:     r.TotalRequests,
+		TotalErrors:       r.TotalErrors,
+		TotalServerErrors: r.TotalServerErrors,
 	}
 
 	return metricCounters, nil
-}
-
-func (r *RequestsMetric) IncTotalRequests() {
-	r.totalRequests++
-	r.promTotalRequests.Inc()
-}
-
-func (r *RequestsMetric) IncTotalErrors() {
-	r.totalErrors++
-	r.promTotalErrors.Inc()
-}
-
-func (r *RequestsMetric) IncServerErrors() {
-	r.totalServerErrors++
-	r.promServerErrors.Inc()
 }

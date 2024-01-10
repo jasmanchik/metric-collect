@@ -2,12 +2,15 @@ package http
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
 	"http-metric/internal/app/http/handlers"
 	"http-metric/internal/metrics"
 	"http-metric/internal/platform/web"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -38,18 +41,50 @@ func New(log *slog.Logger, port int, timeout time.Duration, metrics *metrics.Met
 	return app
 }
 
-type Handler func(w http.ResponseWriter, r *http.Request) error
+type Handler func(w http.ResponseWriter, r *http.Request) (any, error)
 
 func (a *App) Handle(pattern string, handler Handler) {
 	const op = "http.Handle"
+	metric := a.metrics.HttpMetric
 	l := a.log.With(slog.String("op", op), slog.String("endpoint", pattern))
+
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		l.Info("handling request")
-		if err := handler(w, r); err != nil {
-			l.Error("request error", slog.String("error", err.Error()))
-			if err := web.RespondError(w); err != nil {
-				l.Error("can't respond with error", slog.String("error", err.Error()))
+		metric.TotalRequests++
+		metric.PromTotalRequests.WithLabelValues(r.Method, pattern).Inc()
+		defer func() {
+			if err := recover(); err != nil {
+				metric.TotalServerErrors++
+				metric.PromTotalErrors.WithLabelValues("GET", "/ping", strconv.Itoa(http.StatusInternalServerError)).Inc()
+				l.Error("panic", "error", err) //nolint:govet
+				err := web.RespondError(w)
+				if err != nil {
+					l.Error("defer response error:", slog.String("error", err.Error())) //nolint:govet
+				}
 			}
+		}()
+
+		l.Info("handling request")
+		timer := prometheus.NewTimer(metric.PromRequestDuration.WithLabelValues(r.Method, pattern))
+		defer timer.ObserveDuration()
+		data, err := handler(w, r)
+
+		if err != nil {
+			metric.TotalErrors++
+			metric.PromTotalErrors.WithLabelValues(r.Method, pattern, strconv.Itoa(http.StatusBadRequest)).Inc()
+
+			var httpError *handlers.ErrorHTTP
+			if err != nil && errors.As(err, &httpError) {
+				err = web.Response(w, nil, httpError.Code)
+				if err != nil {
+					l.Warn("response error:", slog.String("error", err.Error())) //nolint:govet
+					panic(fmt.Sprintf("response error: %v", err))
+				}
+			}
+		}
+		err = web.Response(w, data, http.StatusOK)
+		if err != nil {
+			l.Error("response error:", slog.String("error", err.Error())) //nolint:govet
+			panic(fmt.Sprintf("response error: %v", err))
 		}
 	}
 	a.mux.HandleFunc(pattern, fn)
@@ -87,9 +122,9 @@ func (a *App) Routes() http.Handler {
 	const op = "http_app.Routes"
 	a.log.With(slog.String("op", op)).Info("setting up routes")
 
-	httpMetric := handlers.NewHttpMetric(a.log, a.metrics.HttpMetric)
-	a.Handle("/ping", httpMetric.Ping)
-	a.Handle("/requests_counter", httpMetric.RequestCounter)
+	metric := handlers.NewHttpMetric(a.log, a.metrics.HttpMetric)
+	a.Handle("/ping", metric.Ping)
+	a.Handle("/requests_counter", metric.RequestCounter)
 
 	return a.mux
 }

@@ -1,2 +1,3 @@
-cd ./cmd/metrics
-go run . -config=../../config/local_test.yaml
+Run application:
+
+cd ./cmd/metrics && go run . -config=../../config/local_test.yaml

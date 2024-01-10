@@ -1,0 +1,4 @@
+env: "local"
+http:
+  port: 80
+  timeout: 30s

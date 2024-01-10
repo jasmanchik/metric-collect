@@ -10,22 +10,22 @@ import (
 )
 
 type HttpMetricHandler struct {
-	log     *slog.Logger
-	counter *httpMetric.RequestsMetric
+	log    *slog.Logger
+	metric *httpMetric.RequestsMetric
 }
 
 func NewHttpMetric(logger *slog.Logger, m *httpMetric.RequestsMetric) *HttpMetricHandler {
 	return &HttpMetricHandler{
-		log:     logger,
-		counter: m,
+		log:    logger,
+		metric: m,
 	}
 }
 
-func (m *HttpMetricHandler) Ping(w http.ResponseWriter, r *http.Request) error {
-	l := m.log.With(slog.String("op", "router.ping"))
+func (h *HttpMetricHandler) Ping(w http.ResponseWriter, r *http.Request) error {
+	l := h.log.With(slog.String("op", "router.ping"))
 	defer func() {
 		if err := recover(); err != nil {
-			m.counter.TotalServerErrors++
+			h.metric.IncServerErrors()
 			l.Error("panic", "error", err) //nolint:govet
 			err := web.RespondError(w)
 			if err != nil {
@@ -33,12 +33,13 @@ func (m *HttpMetricHandler) Ping(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 	}()
-	err := m.counter.Ping()
-	m.counter.TotalRequests++
+	err := h.metric.Ping()
+
+	h.metric.IncTotalRequests()
 	var errMetric *httpMetric.MetricHttpError
 	if err != nil && errors.As(err, &errMetric) {
 		if errMetric.Code == http.StatusBadRequest {
-			m.counter.TotalErrors++
+			h.metric.IncTotalErrors()
 		}
 		err = web.Response(w, nil, http.StatusBadRequest)
 		if err != nil {
@@ -55,9 +56,9 @@ func (m *HttpMetricHandler) Ping(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (m *HttpMetricHandler) RequestCounter(w http.ResponseWriter, r *http.Request) error {
-	metricResult, err := m.counter.GetMetricList()
-	log := m.log.With(slog.String("op", "router.RequestCounter"))
+func (h *HttpMetricHandler) RequestCounter(w http.ResponseWriter, r *http.Request) error {
+	metricResult, err := h.metric.GetMetricList()
+	log := h.log.With(slog.String("op", "router.RequestCounter"))
 	if err != nil {
 		log.Error("Response error: ", err.Error()) //nolint:govet
 	}
@@ -67,10 +68,5 @@ func (m *HttpMetricHandler) RequestCounter(w http.ResponseWriter, r *http.Reques
 		log.Error("Response error: ", err.Error()) //nolint:govet
 		return fmt.Errorf("response error: %w", err)
 	}
-	return nil
-}
-
-func (m *HttpMetricHandler) Metrics(w http.ResponseWriter, r *http.Request) error {
-
 	return nil
 }

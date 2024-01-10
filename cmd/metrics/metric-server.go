@@ -1,9 +1,11 @@
 package main
 
 import (
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"http-metric/internal/app"
 	"http-metric/internal/config"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,6 +20,14 @@ const (
 func main() {
 	cfg := config.MustLoad()
 	logger := SetupLogger(cfg.Env)
+
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		err := http.ListenAndServe(":8081", nil)
+		if err != nil {
+			logger.Error("can't start http metric server", slog.String("error", err.Error())) //nolint:govet
+		}
+	}()
 
 	application := app.New(logger, cfg.HTTP.Port, cfg.HTTP.Timeout)
 	appErrors := application.HTTPServer.Run()

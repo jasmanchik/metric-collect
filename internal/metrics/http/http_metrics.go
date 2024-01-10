@@ -2,6 +2,8 @@ package http
 
 import (
 	"errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"log/slog"
 	"math/rand"
 	"net/http"
@@ -15,15 +17,35 @@ type RequestMetricResult struct {
 }
 
 type RequestsMetric struct {
-	TotalRequests     int
-	TotalErrors       int
-	TotalServerErrors int
+	totalRequests     int
+	totalErrors       int
+	totalServerErrors int
 	log               *slog.Logger
+	promTotalRequests prometheus.Counter
+	promTotalErrors   prometheus.Counter
+	promServerErrors  prometheus.Counter
 }
 
 func NewRequestCounter(log *slog.Logger) *RequestsMetric {
+
+	promTotalRequests := promauto.NewCounter(prometheus.CounterOpts{
+		Name: "total_requests_count",
+		Help: "The total number of requests",
+	})
+	promTotalErrors := promauto.NewCounter(prometheus.CounterOpts{
+		Name: "total_request_errors_count",
+		Help: "The total number of error requests",
+	})
+	promServerErrors := promauto.NewCounter(prometheus.CounterOpts{
+		Name: "total_server_errors_count",
+		Help: "The total number of fatal error requests",
+	})
+
 	return &RequestsMetric{
-		log: log,
+		log:               log,
+		promTotalRequests: promTotalRequests,
+		promTotalErrors:   promTotalErrors,
+		promServerErrors:  promServerErrors,
 	}
 }
 
@@ -53,10 +75,25 @@ func (r *RequestsMetric) Ping() error {
 func (r *RequestsMetric) GetMetricList() (*RequestMetricResult, error) {
 
 	metricCounters := &RequestMetricResult{
-		TotalRequests:     r.TotalRequests,
-		TotalErrors:       r.TotalErrors,
-		TotalServerErrors: r.TotalServerErrors,
+		TotalRequests:     r.totalRequests,
+		TotalErrors:       r.totalErrors,
+		TotalServerErrors: r.totalServerErrors,
 	}
 
 	return metricCounters, nil
+}
+
+func (r *RequestsMetric) IncTotalRequests() {
+	r.totalRequests++
+	r.promTotalRequests.Inc()
+}
+
+func (r *RequestsMetric) IncTotalErrors() {
+	r.totalErrors++
+	r.promTotalErrors.Inc()
+}
+
+func (r *RequestsMetric) IncServerErrors() {
+	r.totalServerErrors++
+	r.promServerErrors.Inc()
 }

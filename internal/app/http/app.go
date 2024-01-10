@@ -90,7 +90,6 @@ func (a *App) Routes() http.Handler {
 	httpMetric := handlers.NewHttpMetric(a.log, a.metrics.HttpMetric)
 	a.Handle("/ping", httpMetric.Ping)
 	a.Handle("/requests_counter", httpMetric.RequestCounter)
-	a.Handle("/metrics", httpMetric.Metrics)
 
 	return a.mux
 }

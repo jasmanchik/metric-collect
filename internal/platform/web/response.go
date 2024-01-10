@@ -9,7 +9,7 @@ import (
 func Response(w http.ResponseWriter, data interface{}, statusCode int) error {
 
 	if statusCode == http.StatusNoContent {
-		w.WriteHeader(http.StatusNoContent)
+		w.WriteHeader(http.StatusNoContent) //todo http: superfluous response.WriteHeader call
 		return nil
 	}
 

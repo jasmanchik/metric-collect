@@ -29,32 +29,6 @@ func main() {
 		}
 	}()
 
-	//requestDuration := prometheus.NewHistogramVec(
-	//	prometheus.HistogramOpts{
-	//		Name:    "http_request_duration_seconds",
-	//		Help:    "Duration of requests",
-	//		Buckets: prometheus.DefBuckets,
-	//	},
-	//	[]string{"time"},
-	//)
-	//err := prometheus.Register(requestDuration)
-	//if err != nil {
-	//	return
-	//}
-	//
-	//go func() {
-	//	for {
-	//		start := time.Now()
-	//
-	//		randTime := rand.Intn(3)
-	//		time.Sleep(time.Duration(randTime) * time.Second)
-	//
-	//		requestDuration.WithLabelValues(fmt.Sprintf("%d", 200)).Observe(time.Since(start).Seconds())
-	//	}
-	//}()
-	//
-	//ch := make(chan int, 1)
-	//<-ch
 	application := app.New(logger, cfg.HTTP.Port, cfg.HTTP.Timeout)
 	appErrors := application.HTTPServer.Run()
 

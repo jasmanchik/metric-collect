@@ -3,18 +3,13 @@ package config
 import (
 	"flag"
 	"github.com/ilyakaznacheev/cleanenv"
+	"http-metric/internal/server/http"
 	"os"
-	"time"
 )
 
 type Config struct {
-	Env  string     `yaml:"env" env-default:"local"`
-	HTTP HTTPConfig `yaml:"http" env-required:"true"`
-}
-
-type HTTPConfig struct {
-	Port    int           `yaml:"port" env-required:"true"`
-	Timeout time.Duration `yaml:"timeout" env-default:"1h"`
+	Env  string      `yaml:"env" env-default:"local"`
+	HTTP http.Config `yaml:"http" env-required:"true"`
 }
 
 func MustLoad() *Config {

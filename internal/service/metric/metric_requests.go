@@ -1,4 +1,4 @@
-package http
+package metric
 
 import (
 	"errors"
@@ -6,22 +6,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"log/slog"
 	"math/rand"
-	"net/http"
+	"sync/atomic"
 	"time"
 )
 
-type RequestMetricResult struct {
-	TotalRequests     int `json:"total_requests_count"`
-	TotalErrors       int `json:"total_request_errors_count"`
-	TotalServerErrors int `json:"total_server_errors_count"`
-}
-
 type RequestsMetric struct {
-	TotalRequests       int
-	TotalErrors         int
-	TotalServerErrors   int
-	log                 *slog.Logger
-	PromREDMetric       *prometheus.CounterVec
+	log *slog.Logger
+
+	totalRequests       int32
+	totalErrors         int32
+	totalServerErrors   int32
 	PromTotalRequests   *prometheus.CounterVec
 	PromTotalErrors     *prometheus.CounterVec
 	PromRequestDuration *prometheus.HistogramVec
@@ -59,6 +53,16 @@ func NewRequestCounter(log *slog.Logger) *RequestsMetric {
 	}
 }
 
+var (
+	BadRequestError = errors.New("bad request")
+)
+
+type RequestMetricResult struct {
+	TotalRequests     int32 `json:"total_requests_count"`
+	TotalErrors       int32 `json:"total_request_errors_count"`
+	TotalServerErrors int32 `json:"total_server_errors_count"`
+}
+
 func (r *RequestsMetric) Ping() error {
 	const op = "router.ping"
 	logger := r.log.With("op", op)
@@ -73,22 +77,31 @@ func (r *RequestsMetric) Ping() error {
 	}
 	if errorRand <= 0.15 {
 		logger.Warn("bad Request error")
-		return &MetricHttpError{
-			ErrorText: "Bad Request error",
-			Code:      http.StatusBadRequest,
-		}
+		return BadRequestError
 	}
 
 	return nil
 }
 
-func (r *RequestsMetric) GetMetricList() (*RequestMetricResult, error) {
+func (r *RequestsMetric) GetMetricList() *RequestMetricResult {
 
 	metricCounters := &RequestMetricResult{
-		TotalRequests:     r.TotalRequests,
-		TotalErrors:       r.TotalErrors,
-		TotalServerErrors: r.TotalServerErrors,
+		TotalRequests:     r.totalRequests,
+		TotalErrors:       r.totalErrors,
+		TotalServerErrors: r.totalServerErrors,
 	}
 
-	return metricCounters, nil
+	return metricCounters
+}
+
+func (r *RequestsMetric) AddTotalRequests(i int32) {
+	atomic.AddInt32(&r.totalRequests, i)
+}
+
+func (r *RequestsMetric) AddTotalErrors(i int32) {
+	atomic.AddInt32(&r.totalErrors, i)
+}
+
+func (r *RequestsMetric) AddServerErrors(i int32) {
+	atomic.AddInt32(&r.totalServerErrors, i)
 }

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package metrics;
+
+option go_package = "korablev.metrics.v1;metricsv1"; // как правильно называть?
+
+service Metric {
+  rpc Ping (PingRequest) returns (PingResponse);
+  rpc RequestsCounter (RequestsCounterRequest) returns (RequestsCounterResponse);
+}
+
+message PingRequest {
+}
+
+message PingResponse {
+}
+
+message RequestsCounterRequest {
+}
+
+message RequestsCounterResponse {
+  int32 total_requests_count = 1;
+  int32 total_request_errors_count = 2;
+  int32 total_server_errors_count = 3;
+}

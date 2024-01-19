@@ -2,7 +2,7 @@ package app
 
 import (
 	"errors"
-	"http-metric/internal/server/http"
+	"http-metric/internal/server/grpc"
 	"http-metric/internal/service/metric"
 	"log/slog"
 	defHttp "net/http"
@@ -40,8 +40,8 @@ func (a App) Stop() error {
 func New(logger *slog.Logger, port int, timeout time.Duration) *App {
 	metric := metric.New(logger)
 
-	server := http.New(logger, port, metric)
-	//server := grpc.New(logger, port, metric)
+	//server := http.New(logger, port, metric)
+	server := grpc.New(logger, port, metric)
 
 	return &App{
 		server: server,

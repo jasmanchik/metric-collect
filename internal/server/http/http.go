@@ -12,11 +12,11 @@ import (
 )
 
 type ServerHttp struct {
-	log        *slog.Logger
-	httpServer *http.Server
-	port       int
-	metrics    *metric.Manager
-	router     *http.ServeMux
+	log     *slog.Logger
+	server  *http.Server
+	port    int
+	metrics *metric.Manager
+	router  *http.ServeMux
 }
 
 func New(log *slog.Logger, port int, metrics *metric.Manager) *ServerHttp {
@@ -25,10 +25,10 @@ func New(log *slog.Logger, port int, metrics *metric.Manager) *ServerHttp {
 	}
 
 	app := &ServerHttp{
-		log:        log,
-		httpServer: server,
-		port:       port,
-		metrics:    metrics,
+		log:     log,
+		server:  server,
+		port:    port,
+		metrics: metrics,
 	}
 
 	server.Handler = app.Routes()
@@ -42,12 +42,12 @@ func (a *ServerHttp) Start() error {
 
 	logger.Info("starting server")
 
-	err := a.httpServer.ListenAndServe()
+	err := a.server.ListenAndServe()
 	if err != nil {
 		return err
 	}
 
-	logger.Info(fmt.Sprintf("http server is running on %s", slog.String("addr", a.httpServer.Addr)))
+	logger.Info(fmt.Sprintf("http server is running on %s", slog.String("addr", a.server.Addr)))
 
 	return nil
 }
@@ -56,7 +56,7 @@ func (a *ServerHttp) Stop() error {
 	const op = "httpServer.Stop"
 	a.log.With(slog.String("op", op)).Info("stopping HTTP server", slog.Int("port", a.port))
 
-	err := a.httpServer.Shutdown(context.Background())
+	err := a.server.Shutdown(context.Background())
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -72,7 +72,7 @@ func (a *ServerHttp) Routes() http.Handler {
 	r := gin.New()
 	r.Use(middleware.LogRequest(a.log), middleware.Metric(a.metrics), middleware.Recovery(a.log))
 
-	m := handlers.NewMetricHandler(a.log, a.metrics)
+	m := handlers.NewHttpMetricHandler(a.log, a.metrics)
 	r.GET("/ping", m.Ping)
 	r.GET("/requests_counter", m.RequestCounter)
 

@@ -13,15 +13,15 @@ type HttpMetricHandler struct {
 	metric *metric.Manager
 }
 
-func NewMetricHandler(logger *slog.Logger, m *metric.Manager) *HttpMetricHandler {
+func NewHttpMetricHandler(logger *slog.Logger, m *metric.Manager) *HttpMetricHandler {
 	return &HttpMetricHandler{
 		log:    logger,
 		metric: m,
 	}
 }
 
-func (h *HttpMetricHandler) Ping(c *gin.Context) {
-	err := h.metric.RequestMetric.Ping()
+func (m *HttpMetricHandler) Ping(c *gin.Context) {
+	err := m.metric.RequestMetric.Ping()
 	if err != nil {
 		if errors.Is(err, metric.BadRequestError) {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -37,8 +37,8 @@ func (h *HttpMetricHandler) Ping(c *gin.Context) {
 	})
 }
 
-func (h *HttpMetricHandler) RequestCounter(c *gin.Context) {
-	metricResult := h.metric.RequestMetric.GetMetricList()
+func (m *HttpMetricHandler) RequestCounter(c *gin.Context) {
+	metricResult := m.metric.RequestMetric.GetMetricList()
 
 	c.JSON(http.StatusOK, metricResult)
 }

@@ -10,7 +10,7 @@ func Recovery(logger *slog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
-				logger.With("middleware", "recovery").Error("panic", "error", err)
+				logger.With("interceptor", "recovery").Error("panic", "error", err)
 				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 					"error": "Internal Server Error",
 				})

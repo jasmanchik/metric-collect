@@ -1,3 +1,6 @@
 Run application:
 
-`cd ./cmd/metrics && go run . -config=../../config/local_test.yaml`
+`make run` - run linter and server
+`make start` - run server
+`make proto` - gen proto files
+`make lint` - run linter

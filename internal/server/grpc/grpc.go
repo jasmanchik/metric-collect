@@ -47,8 +47,9 @@ func (s *ServerGrpc) Stop() error {
 func New(logger *slog.Logger, port int, metric *metric.Manager) *ServerGrpc {
 
 	gRPCServer := grpclib.NewServer(grpclib.ChainUnaryInterceptor(
-		interceptor.Recovery(logger),
+		interceptor.Recovery(logger, metric),
 		interceptor.LogRequests(logger),
+		interceptor.Metric(metric),
 	))
 
 	metricsv1.RegisterMetricServer(gRPCServer, handlers.NewGrpcMetricHandler(logger, metric))

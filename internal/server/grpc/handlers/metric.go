@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	metricsv1 "http-metric/api/grpc/go"
 	"http-metric/internal/service/metric"
 	"log/slog"
@@ -26,7 +28,7 @@ func (m *GrpcMetricHandler) Ping(context.Context, *metricsv1.PingRequest) (*metr
 	err := m.metric.RequestMetric.Ping()
 	if err != nil {
 		if errors.Is(err, metric.BadRequestError) {
-
+			return &metricsv1.PingResponse{}, status.Error(codes.InvalidArgument, "bad request error")
 		}
 	}
 

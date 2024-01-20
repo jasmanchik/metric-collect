@@ -1,29 +1,30 @@
 package interceptor
 
 import (
-	"github.com/gin-gonic/gin"
+	"context"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 	"http-metric/internal/service/metric"
-	"strconv"
 )
 
-func Metric(m *metric.Manager) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func Metric(m *metric.Manager) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		m.RequestMetric.AddTotalRequests(1)
-		method := c.Request.Method
-		path := c.Request.URL.Path
+		method := "GRPC"
+		path := info.FullMethod
 		m.RequestMetric.PromTotalRequests.WithLabelValues(method, path).Inc()
 		timer := prometheus.NewTimer(m.RequestMetric.PromRequestDuration.WithLabelValues(method, path))
+		resp, err := handler(ctx, req)
+		timer.ObserveDuration()
 
-		c.Next()
-
-		if c.Writer.Status() >= 500 {
+		if err != nil {
+			errStatus, _ := status.FromError(err)
+			errCode := errStatus.Code()
 			m.RequestMetric.AddTotalErrors(1)
-			m.RequestMetric.PromTotalErrors.WithLabelValues(method, path, strconv.Itoa(c.Writer.Status())).Inc()
-		} else if c.Writer.Status() >= 400 {
-			m.RequestMetric.AddServerErrors(1)
+			m.RequestMetric.PromTotalErrors.WithLabelValues(method, path, errCode.String()).Inc()
 		}
 
-		timer.ObserveDuration()
+		return resp, err
 	}
 }

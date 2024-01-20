@@ -3,3 +3,6 @@ proto:
 
 run:
 	go run ./cmd/metrics -config=./config/local_test.yaml
+
+lint:
+	golangci-lint run

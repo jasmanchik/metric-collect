@@ -6,7 +6,6 @@ import (
 	"http-metric/internal/service/metric"
 	"log/slog"
 	defHttp "net/http"
-	"time"
 )
 
 type WebServer interface {
@@ -29,15 +28,14 @@ func (a App) Run() {
 }
 
 func (a App) Stop() error {
-	err := a.server.Stop()
-	if err != nil {
+	if err := a.server.Stop(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func New(logger *slog.Logger, port int, timeout time.Duration) *App {
+func New(logger *slog.Logger, port int) *App {
 	metric := metric.New(logger)
 
 	//server := http.New(logger, port, metric)

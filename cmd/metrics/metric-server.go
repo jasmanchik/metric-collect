@@ -8,28 +8,23 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
-)
-
-const (
-	envLocal = "local"
-	envDev   = "dev"
-	envProd  = "prod"
 )
 
 func main() {
 	cfg := config.MustLoad()
-	logger := SetupLogger(cfg.Env)
+	logger := SetupLogger(cfg.LogLevel)
 
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
-		err := http.ListenAndServe(":8081", nil)
+		err := http.ListenAndServe(":"+strconv.Itoa(cfg.DebugPort), nil)
 		if err != nil {
 			logger.Error("can't start http metric server", slog.String("error", err.Error())) //nolint:govet
 		}
 	}()
 
-	application := app.New(logger, cfg.HTTP.Port, cfg.HTTP.Timeout)
+	application := app.New(logger, cfg.HTTP.Port)
 	go application.Run()
 
 	shutdown := make(chan os.Signal, 1)
@@ -46,24 +41,13 @@ func main() {
 	}
 }
 
-func SetupLogger(env string) *slog.Logger {
+func SetupLogger(level slog.Level) *slog.Logger {
 
 	var log *slog.Logger
 
-	switch env {
-	case envLocal:
-		log = slog.New(
-			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
-	case envDev:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
-	case envProd:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-		)
-	}
+	log = slog.New(
+		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}),
+	)
 
 	return log
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"http-metric/internal/service/metric"
+	"net/http"
 	"strconv"
 )
 
@@ -17,10 +18,10 @@ func Metric(m *metric.Manager) gin.HandlerFunc {
 
 		c.Next()
 
-		if c.Writer.Status() >= 500 {
+		if c.Writer.Status() >= http.StatusInternalServerError {
 			m.RequestMetric.AddTotalErrors(1)
 			m.RequestMetric.PromTotalErrors.WithLabelValues(method, path, strconv.Itoa(c.Writer.Status())).Inc()
-		} else if c.Writer.Status() >= 400 {
+		} else if c.Writer.Status() >= http.StatusBadRequest {
 			m.RequestMetric.AddServerErrors(1)
 		}
 

@@ -4,12 +4,15 @@ import (
 	"flag"
 	"github.com/ilyakaznacheev/cleanenv"
 	"http-metric/internal/server/http"
+	"log/slog"
 	"os"
 )
 
 type Config struct {
-	Env  string      `yaml:"env" env-default:"local"`
-	HTTP http.Config `yaml:"http" env-required:"true"`
+	Env       string      `yaml:"env" env-required:"true" env-default:"local"`
+	HTTP      http.Config `yaml:"http" env-required:"true"`
+	LogLevel  slog.Level
+	DebugPort int
 }
 
 func MustLoad() *Config {

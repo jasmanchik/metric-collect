@@ -20,7 +20,7 @@ func Recovery(logger *slog.Logger, m *metric.Manager) grpc.UnaryServerIntercepto
 
 					m.RequestMetric.AddServerErrors(1)
 					m.RequestMetric.PromTotalErrors.WithLabelValues(method, path, strconv.Itoa(int(codes.Internal))).Inc()
-					//как отдать InternalError статус?
+					// как отдать InternalError статус?
 				}
 			}
 		}()

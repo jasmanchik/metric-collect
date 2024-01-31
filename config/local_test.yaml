@@ -2,3 +2,5 @@ env: "local"
 http:
   port: 8080
   timeout: 1h
+loglevel: "ERROR"
+debugport: 8081
